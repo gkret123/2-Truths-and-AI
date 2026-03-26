@@ -5,43 +5,43 @@ const MOCK_GAMES = [
     topic: 'Space Exploration',
     rounds: [
       {
-        lieId: 'b',
+        lieId: 2,
         statements: [
-          { id: 'a', text: 'The Voyager 1 spacecraft is currently in interstellar space.' },
-          { id: 'b', text: 'The first human landed on Mars in 1997.' },
-          { id: 'c', text: 'Saturn has more known moons than any other planet in our solar system.' },
+          { id: 1, text: 'The Voyager 1 spacecraft is currently in interstellar space.' },
+          { id: 2, text: 'The first human landed on Mars in 1997.' },
+          { id: 3, text: 'Saturn has more known moons than any other planet in our solar system.' },
         ],
       },
       {
-        lieId: 'a',
+        lieId: 1,
         statements: [
-          { id: 'a', text: 'A day on Venus is shorter than a day on Earth.' },
-          { id: 'b', text: 'The James Webb Space Telescope observes primarily in infrared wavelengths.' },
-          { id: 'c', text: 'The Moon is slowly moving away from Earth over time.' },
+          { id: 1, text: 'A day on Venus is shorter than a day on Earth.' },
+          { id: 2, text: 'The James Webb Space Telescope observes primarily in infrared wavelengths.' },
+          { id: 3, text: 'The Moon is slowly moving away from Earth over time.' },
         ],
       },
       {
-        lieId: 'c',
+        lieId: 3,
         statements: [
-          { id: 'a', text: 'The Apollo 13 mission returned safely to Earth despite a major in-flight failure.' },
-          { id: 'b', text: 'Neutron stars can spin hundreds of times per second.' },
-          { id: 'c', text: 'Mercury has the thickest atmosphere of all terrestrial planets.' },
+          { id: 1, text: 'The Apollo 13 mission returned safely to Earth despite a major in-flight failure.' },
+          { id: 2, text: 'Neutron stars can spin hundreds of times per second.' },
+          { id: 3, text: 'Mercury has the thickest atmosphere of all terrestrial planets.' },
         ],
       },
       {
-        lieId: 'a',
+        lieId: 1,
         statements: [
-          { id: 'a', text: 'Jupiter is the hottest planet in our solar system.' },
-          { id: 'b', text: 'The International Space Station orbits Earth roughly every 90 minutes.' },
-          { id: 'c', text: 'A light-year is a measure of distance, not time.' },
+          { id: 1, text: 'Jupiter is the hottest planet in our solar system.' },
+          { id: 2, text: 'The International Space Station orbits Earth roughly every 90 minutes.' },
+          { id: 3, text: 'A light-year is a measure of distance, not time.' },
         ],
       },
       {
-        lieId: 'b',
+        lieId: 2,
         statements: [
-          { id: 'a', text: 'Mars has the largest volcano known in the solar system: Olympus Mons.' },
-          { id: 'b', text: 'The Hubble Space Telescope was launched in 2009.' },
-          { id: 'c', text: 'Some exoplanets are found by observing tiny dips in a star’s brightness.' },
+          { id: 1, text: 'Mars has the largest volcano known in the solar system: Olympus Mons.' },
+          { id: 2, text: 'The Hubble Space Telescope was launched in 2009.' },
+          { id: 3, text: 'Some exoplanets are found by observing tiny dips in a star’s brightness.' },
         ],
       },
     ],
