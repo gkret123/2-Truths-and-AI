@@ -56,7 +56,58 @@ Players are given a topic and must identify which of three AI-generated statemen
 ## Prerequisites
 
 - **Node.js** 18 or later
-- An **OpenAI API key** with access to `gpt-4o-mini` (or `gpt-3.5-turbo` — update `aiService.js` if needed)
+- An **OpenAI API key** with access to `gpt-4o-mini` (only needed when you want real AI-generated rounds)
+
+---
+
+## Beginner Quick Start (No API key required)
+
+If you want to try the app with prewritten rounds first, run the frontend in **mock mode**.
+
+### Step 1: Open a terminal in the project
+
+```bash
+cd 2-Truths-and-AI
+```
+
+### Step 2: Install frontend dependencies
+
+```bash
+cd frontend
+npm install
+```
+
+### Step 3: Enable mock mode
+
+Create a local environment file:
+
+```bash
+cp .env.example .env.local
+```
+
+Open `frontend/.env.local` and set:
+
+```env
+VITE_USE_MOCK_API=true
+```
+
+### Step 4: Start the frontend
+
+```bash
+npm run dev
+```
+
+Vite will print a local URL (usually `http://localhost:5173`). Open that URL in your browser.
+
+### Step 5: Play-test the game
+
+- Type any topic and start.
+- You will get a fixed set of prewritten rounds.
+- No backend server is required for this mode.
+
+### Step 6: Stop the app
+
+In the terminal running Vite, press `Ctrl + C`.
 
 ---
 
@@ -101,6 +152,7 @@ npm install
 ```bash
 cd ../frontend
 npm install
+cp .env.example .env.local
 ```
 
 ---
@@ -125,6 +177,8 @@ npm run dev
 # Vite dev server on http://localhost:5173
 # API requests to /api are proxied to the backend automatically
 ```
+
+> If `VITE_USE_MOCK_API=true` in `frontend/.env.local`, the frontend uses prewritten local data and does not call the backend.
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 

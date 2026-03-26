@@ -3,6 +3,12 @@ import LandingScreen from './components/LandingScreen';
 import GameScreen from './components/GameScreen';
 import RoundResult from './components/RoundResult';
 import FinalScreen from './components/FinalScreen';
+import {
+  getRound,
+  resetSession,
+  startGame,
+  submitAnswer,
+} from './services/gameApi';
 
 /**
  * App-level state machine:
@@ -27,20 +33,10 @@ export default function App() {
     setTopic(chosenTopic);
 
     try {
-      const res = await fetch('/api/game/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: chosenTopic }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Failed to start game.');
-        setScreen('landing');
-        return;
-      }
+      const data = await startGame(chosenTopic);
 
       setSessionId(data.sessionId);
+      setTopic(data.topic || chosenTopic);
       setScore(0);
       setCurrentRound(1);
       await loadRound(data.sessionId, 1);
@@ -54,15 +50,7 @@ export default function App() {
   // ── Fetch a specific round from the server ──────────────────────────────────
   const loadRound = useCallback(async (sid, roundNum) => {
     try {
-      const res = await fetch(`/api/game/${sid}/round/${roundNum}`);
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Failed to load round.');
-        setScreen('landing');
-        return;
-      }
-
+      const data = await getRound(sid, roundNum);
       setRoundData(data);
       setScreen('playing');
     } catch (err) {
@@ -76,17 +64,7 @@ export default function App() {
   const handleAnswer = useCallback(
     async (selectedId) => {
       try {
-        const res = await fetch(`/api/game/${sessionId}/answer`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ roundNumber: currentRound, selectedId }),
-        });
-        const data = await res.json();
-
-        if (!res.ok) {
-          setError(data.error || 'Failed to submit answer.');
-          return;
-        }
+        const data = await submitAnswer(sessionId, currentRound, selectedId);
 
         setScore(data.score);
         setLastResult(data);
@@ -115,7 +93,7 @@ export default function App() {
   const handleReset = useCallback(async () => {
     if (sessionId) {
       try {
-        await fetch(`/api/game/${sessionId}`, { method: 'DELETE' });
+        await resetSession(sessionId);
       } catch (err) {
         console.error('Failed to delete session:', err);
         // best-effort cleanup — continue with reset regardless
