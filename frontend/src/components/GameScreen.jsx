@@ -106,10 +106,10 @@ export default function GameScreen({ roundData, totalRounds, score, onAnswer }) 
             className="statement-card"
             onClick={() => handleSelect(s.id)}
             disabled={locked}
-            aria-label={`Statement ${s.id.toUpperCase()}: ${s.text}`}
+            aria-label={`Statement ${String(s.id).toUpperCase()}: ${s.text}`}
           >
             <span className="card-letter" aria-hidden="true">
-              {s.id.toUpperCase()}
+              {String(s.id).toUpperCase()}
             </span>
             <span>{s.text}</span>
           </button>
