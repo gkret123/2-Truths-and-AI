@@ -11,7 +11,7 @@ const MAX_TOPIC_LENGTH = 80;
 const BLOCKED_PATTERNS = [
   /\b(porn|sex|nude|naked|xxx|adult|erotic)\b/i,
   /\b(kill(?:ing)?|murder|suicide|self.harm|rape|torture|abuse)\b/i,
-  /\b(bomb|explosiv|weapon|gun|shoot|terror|attack|violen(?:ce|t))\b/i,
+  /\b(bomb|explosive|weapon|gun|shoot|terror|attack|violen(?:ce|t))\b/i,
   /\b(drugs?|cocaine|heroin|meth|fentanyl|weed|marijuana)\b/i,
   /\b(hack|malware|phishing|exploit)\b/i,
   /\b(racist|racism|nazi|white.supremac)\b/i,

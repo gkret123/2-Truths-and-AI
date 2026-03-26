@@ -87,8 +87,8 @@ async function generateRounds(topic) {
   let parsed;
   try {
     parsed = JSON.parse(raw);
-  } catch {
-    throw new Error('AI service returned invalid JSON.');
+  } catch (err) {
+    throw new Error(`AI service returned invalid JSON: ${err.message}`);
   }
 
   // The model may wrap the array in an object key — handle both cases

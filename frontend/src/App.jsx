@@ -44,7 +44,8 @@ export default function App() {
       setScore(0);
       setCurrentRound(1);
       await loadRound(data.sessionId, 1);
-    } catch {
+    } catch (err) {
+      console.error('Failed to start game:', err);
       setError('Network error. Please check your connection and try again.');
       setScreen('landing');
     }
@@ -64,7 +65,8 @@ export default function App() {
 
       setRoundData(data);
       setScreen('playing');
-    } catch {
+    } catch (err) {
+      console.error('Failed to load round:', err);
       setError('Network error while loading round.');
       setScreen('landing');
     }
@@ -89,7 +91,8 @@ export default function App() {
         setScore(data.score);
         setLastResult(data);
         setScreen('round_result');
-      } catch {
+      } catch (err) {
+        console.error('Failed to submit answer:', err);
         setError('Network error while submitting answer.');
       }
     },
@@ -113,8 +116,9 @@ export default function App() {
     if (sessionId) {
       try {
         await fetch(`/api/game/${sessionId}`, { method: 'DELETE' });
-      } catch {
-        // best-effort cleanup
+      } catch (err) {
+        console.error('Failed to delete session:', err);
+        // best-effort cleanup — continue with reset regardless
       }
     }
     setSessionId(null);

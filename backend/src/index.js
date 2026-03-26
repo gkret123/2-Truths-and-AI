@@ -3,11 +3,34 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 
 const gameRouter = require('./routes/game');
 
 const app = express();
 const PORT = parseInt(process.env.PORT, 10) || 3001;
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+
+// General limiter for all routes (protects static files and health endpoint)
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please slow down.' },
+});
+
+// Stricter limiter for game-start (calls OpenAI, expensive)
+const startLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many game-start requests. Please wait a moment.' },
+});
+
+app.use(generalLimiter);
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 
@@ -24,6 +47,7 @@ app.use(express.json({ limit: '10kb' }));
 
 // ── API routes ────────────────────────────────────────────────────────────────
 
+app.use('/api/game/start', startLimiter);
 app.use('/api/game', gameRouter);
 
 // Health check
