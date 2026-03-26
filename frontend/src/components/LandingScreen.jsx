@@ -32,7 +32,7 @@ export default function LandingScreen({ onStart, error }) {
     <div className="panel landing" role="main">
       <header>
         <span className="badge" aria-label="Game type">Interactive Exhibit</span>
-        <h1 className="headline">Spot&nbsp;the&nbsp;Lie</h1>
+        <h1 className="headline">Two&nbsp;Truths&nbsp;&&nbsp;AI</h1>
         <p className="subheadline">
           Can you tell which statement is AI-generated fiction?
         </p>
