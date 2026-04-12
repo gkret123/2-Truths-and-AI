@@ -1,51 +1,67 @@
-# Spot the Lie — 2 Truths and AI
+# Two Truths and AI
 
-An interactive museum kiosk experience exploring the erosion of shared reality in the age of AI.
+An interactive installation about how AI sees you — and how it doesn't.
 
-Players are given a topic and must identify which of three AI-generated statements is the lie — all written in the same convincing style.
+The participant is interviewed by an AI. They tell it two truths and one lie about themselves. The AI tries to find the lie. It cannot detect deception. Instead, it picks the statement that least resembles the patterns it has learned from millions of other people. It may not be wrong. It may simply be revealing what it cannot recognize as possible.
 
----
-
-## Features
-
-- 5 rounds per game, all generated upfront via OpenAI
-- 15-second countdown timer per round
-- Automatic scoring and win/loss verdict (≥ 4/5 to win)
-- Session state stored server-side (no cookies/localStorage required)
-- Topic sanitization and content blocklist
-- Minimalist dark design — readable on a museum kiosk display
-- Accessible: keyboard-navigable, ARIA roles, focus management
-- Easy to reset for the next visitor
+The piece exists to make people think about their own uniqueness — and the cost of being reduced to an average.
 
 ---
 
-## Project Structure
+## Concept
+
+Generative AI does not understand individuality. It evaluates language as statistical likelihood. The least probable statement becomes "the lie."
+
+The conversation is structured as five acts:
+
+1. **Warm-up** — the AI asks a few personal questions to build rapport.
+2. **Statements** — the AI asks for three things about you: two true, one false.
+3. **Probing** — the AI asks short follow-ups about the statements.
+4. **Judgment** — the AI announces which statement fits its patterns least.
+5. **Reflection** — you reveal the actual lie. The AI reacts to whether it was right by coincidence, or wrong because what you live falls outside what it can recognize.
+
+The AI is never allowed to claim it can detect deception. It always frames its judgment as a limit of recognition.
+
+---
+
+## What is and is not wired up
+
+The full architecture is in place — backend dialogue manager, AI service, prompts, JSON-mode handling, frontend conversation surface, session storage, rate limits.
+
+**The real OpenAI call is not yet enabled.** By default the backend runs in `MOCK_AI=true` mode and serves scripted AI responses, so you can play through the entire piece end to end without an API key.
+
+When you are ready to plug in the real model, set `MOCK_AI=false` and provide `OPENAI_API_KEY`. No code changes are needed — every prompt, director note, message-history wiring, and JSON-mode handler is already written in [backend/src/services/aiService.js](backend/src/services/aiService.js).
+
+---
+
+## Project structure
 
 ```
 2-Truths-and-AI/
-├── backend/                 # Express API
+├── backend/                      # Express API
 │   ├── src/
-│   │   ├── index.js         # Server entry point
+│   │   ├── index.js              # Server entry point
 │   │   ├── routes/
-│   │   │   └── game.js      # Game API routes
+│   │   │   └── conversation.js   # /api/conversation/* endpoints
 │   │   ├── services/
-│   │   │   ├── aiService.js     # OpenAI round generation
-│   │   │   └── sessionService.js # In-memory session store
+│   │   │   ├── aiService.js          # MOCK + LIVE AI plumbing, full prompts
+│   │   │   ├── conversationEngine.js # Phase state machine
+│   │   │   └── sessionService.js     # In-memory session store with TTL
 │   │   └── utils/
-│   │       └── sanitize.js  # Topic sanitization
+│   │       └── sanitize.js       # User input sanitization
 │   ├── .env.example
 │   └── package.json
 │
-└── frontend/                # React + Vite app
+└── frontend/                     # React + Vite app
     ├── src/
-    │   ├── App.jsx           # State machine / screen router
-    │   ├── App.css           # All styles
+    │   ├── App.jsx               # intro ↔ conversation router
+    │   ├── App.css               # All styles
     │   ├── main.jsx
-    │   └── components/
-    │       ├── LandingScreen.jsx
-    │       ├── GameScreen.jsx
-    │       ├── RoundResult.jsx
-    │       └── FinalScreen.jsx
+    │   ├── components/
+    │   │   ├── IntroScreen.jsx
+    │   │   └── ConversationScreen.jsx
+    │   └── services/
+    │       └── conversationApi.js
     ├── index.html
     ├── vite.config.js
     └── package.json
@@ -56,174 +72,114 @@ Players are given a topic and must identify which of three AI-generated statemen
 ## Prerequisites
 
 - **Node.js** 18 or later
-- An **OpenAI API key** with access to `gpt-4o-mini` (only needed when you want real AI-generated rounds)
+- (Optional) An **OpenAI API key** — only needed when you flip the backend to live mode.
 
 ---
 
-## Beginner Quick Start (No API key required)
+## Quick start (no API key)
 
-If you want to try the app with prewritten rounds first, run the frontend in **mock mode**.
-
-### Step 1: Open a terminal in the project
-
-```bash
-cd 2-Truths-and-AI
-```
-
-### Step 2: Install frontend dependencies
-
-```bash
-cd frontend
-npm install
-```
-
-### Step 3: Enable mock mode
-
-Create a local environment file:
-
-```bash
-cp .env.example .env.local
-```
-
-Open `frontend/.env.local` and set:
-
-```env
-VITE_USE_MOCK_API=true
-```
-
-### Step 4: Start the frontend
-
-```bash
-npm run dev
-```
-
-Vite will print a local URL (usually `http://localhost:5173`). Open that URL in your browser.
-
-### Step 5: Play-test the game
-
-- Type any topic and start.
-- You will get a fixed set of prewritten rounds.
-- No backend server is required for this mode.
-
-### Step 6: Stop the app
-
-In the terminal running Vite, press `Ctrl + C`.
-
----
-
-## Setup
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/gkret123/2-Truths-and-AI.git
-cd 2-Truths-and-AI
-```
-
-### 2. Configure the backend
-
-```bash
-cd backend
-cp .env.example .env
-```
-
-Edit `.env` and fill in your values:
-
-```env
-# Required — your OpenAI API key
-OPENAI_API_KEY=sk-...
-
-# Optional — port the backend listens on (default: 3001)
-PORT=3001
-
-# Optional — session TTL in milliseconds (default: 30 minutes)
-SESSION_TTL_MS=1800000
-```
-
-### 3. Install backend dependencies
-
-```bash
-cd backend
-npm install
-```
-
-### 4. Install frontend dependencies
-
-```bash
-cd ../frontend
-npm install
-cp .env.example .env.local
-```
-
----
-
-## Running in Development
-
-You need **two terminals**.
+The whole installation runs end-to-end with scripted AI replies. You only need two terminals.
 
 **Terminal 1 — backend:**
 
 ```bash
 cd backend
+cp .env.example .env       # default MOCK_AI=true is fine
+npm install
 npm run dev
-# Server running on http://localhost:3001
+# → Two Truths and AI backend running on http://localhost:3001  [AI mode: MOCK]
 ```
 
 **Terminal 2 — frontend:**
 
 ```bash
 cd frontend
+npm install
 npm run dev
-# Vite dev server on http://localhost:5173
-# API requests to /api are proxied to the backend automatically
+# → Vite dev server on http://localhost:5173
 ```
 
-> If `VITE_USE_MOCK_API=true` in `frontend/.env.local`, the frontend uses prewritten local data and does not call the backend.
-
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+Open [http://localhost:5173](http://localhost:5173) and click **Begin**.
 
 ---
 
-## Running in Production
+## Connecting the real model later
 
-Build the frontend, then start only the backend (it serves the built frontend):
+When you are ready to swap in the real AI:
 
-```bash
-cd frontend
-npm run build      # outputs to frontend/dist/
+1. Edit `backend/.env`:
+   ```env
+   MOCK_AI=false
+   OPENAI_API_KEY=sk-...
+   OPENAI_MODEL=gpt-4o-mini    # optional
+   ```
+2. Restart the backend.
 
-cd ../backend
-NODE_ENV=production npm start
-# Open http://localhost:3001
+That is the entire change. The AI service exposes a single function — `generateUtterance(intent, session, extra)` — and switches between mock and live based on `MOCK_AI`. Both code paths return the same shape, so the dialogue manager and frontend behave identically.
+
+The system prompt, per-intent director notes, message-history conversion, and JSON-mode parsing for the judgment step all live in [backend/src/services/aiService.js](backend/src/services/aiService.js). Tune them there.
+
+---
+
+## How the dialogue is controlled
+
+The route layer is thin. All conversation logic is in [backend/src/services/conversationEngine.js](backend/src/services/conversationEngine.js), which is a deterministic state machine over these phases:
+
+```
+intro → warmup → collecting → probing → judgment → reveal → reflection → done
 ```
 
+The engine never decides what the AI _says_ — it only decides which **intent** to ask the AI service for. Intents are:
+
+| Intent            | When                                              |
+|-------------------|---------------------------------------------------|
+| `intro`           | Opening line                                      |
+| `warmup_question` | One per warm-up step (3 total)                    |
+| `ask_statement`   | One per statement (3 total)                       |
+| `probe`           | Short follow-up about a specific statement        |
+| `judgment`        | Pick the least statistically typical statement    |
+| `ask_reveal`      | Ask the participant which one was actually false  |
+| `reflection`      | Branches on whether the judgment was correct      |
+| `farewell`        | Close the conversation                            |
+
+To change the rhythm of the piece, edit `NUM_WARMUP_QUESTIONS`, `NUM_PROBES`, or `PROBE_TARGETS` at the top of `conversationEngine.js`.
+
 ---
 
-## API Endpoints
+## API endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/game/start` | Start a game. Body: `{ topic }`. Returns `{ sessionId, totalRounds, topic }` |
-| `GET` | `/api/game/:sessionId/round/:roundNumber` | Get a round's statements (1-based). The `lieId` is **never** sent to the client. |
-| `POST` | `/api/game/:sessionId/answer` | Submit an answer. Body: `{ roundNumber, selectedId }`. `selectedId` is `null` on timer expiry. Returns `{ correct, lieId, lieText, score, completed }` |
-| `DELETE` | `/api/game/:sessionId` | Delete a session (reset for next visitor). |
-| `GET` | `/api/health` | Health check. |
+| Method | Path                                       | Description |
+|--------|--------------------------------------------|-------------|
+| `POST` | `/api/conversation/start`                  | Create a session, return AI's opening message. |
+| `POST` | `/api/conversation/:sessionId/message`     | Send the user's next message. Body: `{ text }`. Returns one or more AI messages plus updated public state. |
+| `GET`  | `/api/conversation/:sessionId`             | Read the current transcript and public state. |
+| `DELETE` | `/api/conversation/:sessionId`           | Reset for the next visitor. |
+| `GET`  | `/api/health`                              | Health check. Reports current AI mode. |
 
 ---
 
-## Environment Variables
+## Environment variables
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `OPENAI_API_KEY` | ✅ | — | Your OpenAI API key |
-| `PORT` | No | `3001` | Backend server port |
-| `SESSION_TTL_MS` | No | `1800000` | Session expiry in ms (30 min) |
+| `MOCK_AI` | No | `true` | When `true`, the backend serves scripted AI replies and never calls OpenAI. |
+| `OPENAI_API_KEY` | Only if `MOCK_AI=false` | — | Your OpenAI API key. |
+| `OPENAI_MODEL` | No | `gpt-4o-mini` | Model used in live mode. |
+| `PORT` | No | `3001` | Backend server port. |
+| `SESSION_TTL_MS` | No | `1800000` | Session expiry in ms (30 min). For a kiosk, try `600000` (10 min). |
 
 ---
 
-## Kiosk Deployment Tips
+## Kiosk deployment tips
 
-- Set `SESSION_TTL_MS=600000` (10 min) so sessions expire faster between visitors.
-- Run with `NODE_ENV=production` so the backend serves the built React app.
-- Consider a process manager like PM2: `pm2 start backend/src/index.js --name spot-the-lie`
-- For full-screen kiosk mode, launch Chromium with `--kiosk http://localhost:3001`
+- Set `SESSION_TTL_MS=600000` so sessions clear quickly between visitors.
+- Build the frontend (`npm run build`) and run the backend with `NODE_ENV=production` — it will serve the built React app from the same port.
+- For full-screen kiosk mode, launch Chromium with `--kiosk http://localhost:3001`.
+
+---
+
+## Future work
+
+- Voice in / voice out (Whisper + TTS) — the dialogue manager is already turn-based, so swapping the input/output transport is a UI-layer concern.
+- Persisted transcripts (SQLite/Postgres) for archival.
+- Per-session "rationale" surfaces — show the participant *why* the AI said what it said, not just what it picked.

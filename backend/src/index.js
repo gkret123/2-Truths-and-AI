@@ -5,7 +5,7 @@ const cors = require('cors');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 
-const gameRouter = require('./routes/game');
+const conversationRouter = require('./routes/conversation');
 
 const app = express();
 const PORT = parseInt(process.env.PORT, 10) || 3001;
@@ -15,19 +15,19 @@ const PORT = parseInt(process.env.PORT, 10) || 3001;
 // General limiter for all routes (protects static files and health endpoint)
 const generalLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 120,
+  max: 240,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests. Please slow down.' },
 });
 
-// Stricter limiter for game-start (calls OpenAI, expensive)
+// Stricter limiter for conversation-start (creates a new session)
 const startLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 10,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many game-start requests. Please wait a moment.' },
+  message: { error: 'Too many new conversations. Please wait a moment.' },
 });
 
 app.use(generalLimiter);
@@ -47,11 +47,16 @@ app.use(express.json({ limit: '10kb' }));
 
 // ── API routes ────────────────────────────────────────────────────────────────
 
-app.use('/api/game/start', startLimiter);
-app.use('/api/game', gameRouter);
+app.use('/api/conversation/start', startLimiter);
+app.use('/api/conversation', conversationRouter);
 
 // Health check
-app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/api/health', (_req, res) =>
+  res.json({
+    status: 'ok',
+    mockAi: process.env.MOCK_AI !== 'false',
+  })
+);
 
 // ── Serve React frontend in production ───────────────────────────────────────
 
@@ -71,7 +76,10 @@ if (process.env.NODE_ENV === 'production') {
 // ── Start server ──────────────────────────────────────────────────────────────
 
 app.listen(PORT, () => {
-  console.log(`Spot the Lie backend running on http://localhost:${PORT}`);
+  const mode = process.env.MOCK_AI !== 'false' ? 'MOCK' : 'LIVE';
+  console.log(
+    `Two Truths and AI backend running on http://localhost:${PORT}  [AI mode: ${mode}]`
+  );
   if (process.env.NODE_ENV !== 'production') {
     console.log('CORS enabled — expecting frontend at http://localhost:5173');
   }

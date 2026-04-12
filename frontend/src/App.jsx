@@ -1,154 +1,116 @@
-import { useState, useCallback } from 'react';
-import LandingScreen from './components/LandingScreen';
-import GameScreen from './components/GameScreen';
-import RoundResult from './components/RoundResult';
-import FinalScreen from './components/FinalScreen';
+import { useCallback, useState } from 'react';
+import IntroScreen from './components/IntroScreen';
+import ConversationScreen from './components/ConversationScreen';
 import {
-  getRound,
-  resetSession,
-  startGame,
-  submitAnswer,
-} from './services/gameApi';
+  resetConversation,
+  sendMessage,
+  startConversation,
+} from './services/conversationApi';
 
 /**
- * App-level state machine:
- *   landing  →  loading  →  playing  →  round_result  →  playing (repeat)
- *                                                      →  final
+ * Top-level state machine for the installation:
+ *
+ *   intro  →  conversation  →  intro  (after reset)
+ *
+ * Everything else lives server-side. This component is just a thin
+ * controller around the conversation API.
  */
 export default function App() {
-  const [screen, setScreen] = useState('landing');
+  const [screen, setScreen] = useState('intro');
   const [sessionId, setSessionId] = useState(null);
-  const [topic, setTopic] = useState('');
-  const [currentRound, setCurrentRound] = useState(1);
-  const [roundData, setRoundData] = useState(null); // { roundNumber, statements }
-  const [lastResult, setLastResult] = useState(null); // answer result from API
-  const [score, setScore] = useState(0);
+  const [history, setHistory] = useState([]);
+  const [state, setState] = useState(null);
+  const [thinking, setThinking] = useState(false);
   const [error, setError] = useState(null);
-  const totalRounds = 5;
 
-  // ── Start a new game ────────────────────────────────────────────────────────
-  const handleStart = useCallback(async (chosenTopic) => {
+  // ── Begin a new conversation ────────────────────────────────────────────────
+  const handleBegin = useCallback(async () => {
     setError(null);
-    setScreen('loading');
-    setTopic(chosenTopic);
-
+    setThinking(true);
     try {
-      const data = await startGame(chosenTopic);
-
+      const data = await startConversation();
       setSessionId(data.sessionId);
-      setTopic(data.topic || chosenTopic);
-      setScore(0);
-      setCurrentRound(1);
-      await loadRound(data.sessionId, 1);
+      setHistory(data.messages || []);
+      setState(data.state || null);
+      setScreen('conversation');
     } catch (err) {
-      console.error('Failed to start game:', err);
-      setError('Network error. Please check your connection and try again.');
-      setScreen('landing');
+      console.error('Failed to start conversation:', err);
+      setError('Could not reach the system. Please try again.');
+    } finally {
+      setThinking(false);
     }
   }, []);
 
-  // ── Fetch a specific round from the server ──────────────────────────────────
-  const loadRound = useCallback(async (sid, roundNum) => {
-    try {
-      const data = await getRound(sid, roundNum);
-      setRoundData(data);
-      setScreen('playing');
-    } catch (err) {
-      console.error('Failed to load round:', err);
-      setError('Network error while loading round.');
-      setScreen('landing');
-    }
-  }, []);
+  // ── Send a user message ─────────────────────────────────────────────────────
+  const handleSend = useCallback(
+    async (text) => {
+      if (!sessionId || thinking) return;
 
-  // ── Submit an answer (or null for timer expiry) ─────────────────────────────
-  const handleAnswer = useCallback(
-    async (selectedId) => {
+      // Optimistically append the user message so the UI feels responsive.
+      setHistory((prev) => [...prev, { role: 'user', text }]);
+      setThinking(true);
+
       try {
-        const data = await submitAnswer(sessionId, currentRound, selectedId);
-
-        setScore(data.score);
-        setLastResult(data);
-        setScreen('round_result');
+        const data = await sendMessage(sessionId, text);
+        // Append whatever the AI said back. Sometimes that's two messages
+        // in one turn (judgment + ask_reveal).
+        if (Array.isArray(data.messages) && data.messages.length > 0) {
+          setHistory((prev) => [...prev, ...data.messages]);
+        }
+        setState(data.state || null);
       } catch (err) {
-        console.error('Failed to submit answer:', err);
-        setError('Network error while submitting answer.');
+        console.error('Failed to send message:', err);
+        setHistory((prev) => [
+          ...prev,
+          {
+            role: 'ai',
+            text:
+              '[The system did not respond. Please try sending your message again.]',
+          },
+        ]);
+      } finally {
+        setThinking(false);
       }
     },
-    [sessionId, currentRound]
+    [sessionId, thinking]
   );
 
-  // ── Advance to the next round or show final screen ──────────────────────────
-  const handleNextRound = useCallback(async () => {
-    if (lastResult?.completed) {
-      setScreen('final');
-      return;
-    }
-
-    const nextRound = currentRound + 1;
-    setCurrentRound(nextRound);
-    await loadRound(sessionId, nextRound);
-  }, [lastResult, currentRound, sessionId, loadRound]);
-
-  // ── Reset everything for the next visitor ───────────────────────────────────
+  // ── Reset for the next visitor ──────────────────────────────────────────────
   const handleReset = useCallback(async () => {
     if (sessionId) {
-      try {
-        await resetSession(sessionId);
-      } catch (err) {
-        console.error('Failed to delete session:', err);
-        // best-effort cleanup — continue with reset regardless
-      }
+      await resetConversation(sessionId);
     }
     setSessionId(null);
-    setTopic('');
-    setCurrentRound(1);
-    setRoundData(null);
-    setLastResult(null);
-    setScore(0);
+    setHistory([]);
+    setState(null);
     setError(null);
-    setScreen('landing');
+    setThinking(false);
+    setScreen('intro');
   }, [sessionId]);
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  const awaitingInput =
+    !!state && state.awaiting === 'text' && !state.done;
+  const done = !!state?.done;
+
   return (
     <div className="app">
-      {screen === 'landing' && (
-        <LandingScreen onStart={handleStart} error={error} />
-      )}
-
-      {screen === 'loading' && (
-        <div className="loading-screen" role="status" aria-live="polite">
-          <div className="spinner" aria-hidden="true" />
-          <p>Generating your game about <strong>{topic}</strong>…</p>
-          <p className="loading-sub">This may take a few seconds.</p>
-        </div>
-      )}
-
-      {screen === 'playing' && roundData && (
-        <GameScreen
-          roundData={roundData}
-          totalRounds={totalRounds}
-          score={score}
-          onAnswer={handleAnswer}
+      {screen === 'intro' && (
+        <IntroScreen
+          onBegin={handleBegin}
+          loading={thinking}
+          error={error}
         />
       )}
 
-      {screen === 'round_result' && lastResult && roundData && (
-        <RoundResult
-          result={lastResult}
-          roundData={roundData}
-          currentRound={currentRound}
-          totalRounds={totalRounds}
-          onNext={handleNextRound}
-        />
-      )}
-
-      {screen === 'final' && (
-        <FinalScreen
-          score={score}
-          totalRounds={totalRounds}
-          topic={topic}
-          onReplay={handleReset}
+      {screen === 'conversation' && (
+        <ConversationScreen
+          history={history}
+          onSend={handleSend}
+          awaitingInput={awaitingInput}
+          thinking={thinking}
+          done={done}
+          onReset={handleReset}
+          state={state}
         />
       )}
     </div>

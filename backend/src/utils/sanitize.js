@@ -1,64 +1,47 @@
 /**
- * Topic sanitization and safety checks.
- */
-
-const MAX_TOPIC_LENGTH = 80;
-
-/**
- * Keywords whose presence causes a topic to be rejected.
- * This list blocks obviously harmful or inappropriate content.
- */
-const BLOCKED_PATTERNS = [
-  /\b(porn|sex|nude|naked|xxx|adult|erotic)\b/i,
-  /\b(kill(?:ing)?|murder|suicide|self.harm|rape|torture|abuse)\b/i,
-  /\b(bomb|explosive|weapon|gun|shoot|terror|attack|violen(?:ce|t))\b/i,
-  /\b(drugs?|cocaine|heroin|meth|fentanyl|weed|marijuana)\b/i,
-  /\b(hack|malware|phishing|exploit)\b/i,
-  /\b(racist|racism|nazi|white.supremac)\b/i,
-];
-
-/**
- * Sanitize and validate a topic string.
- * Returns { ok: true, topic } on success or { ok: false, reason } on failure.
+ * Input sanitization for user-supplied text in the conversation.
  *
- * @param {string} raw
- * @returns {{ ok: boolean, topic?: string, reason?: string }}
+ * The participant types short, freeform answers — names, places, statements
+ * about themselves. We do not need topic-style filtering here, but we do
+ * need to:
+ *   - reject non-strings,
+ *   - cap length so the model context cannot blow up,
+ *   - strip control characters that would corrupt the transcript.
  */
-function sanitizeTopic(raw) {
+
+const MAX_USER_TEXT_LENGTH = 500;
+
+/**
+ * Sanitize a freeform user message.
+ *
+ * @param {unknown} raw
+ * @returns {{ ok: true, text: string } | { ok: false, reason: string }}
+ */
+function sanitizeUserText(raw) {
   if (typeof raw !== 'string') {
-    return { ok: false, reason: 'Topic must be a string.' };
+    return { ok: false, reason: 'Message must be a string.' };
   }
 
-  // Strip leading/trailing whitespace and collapse internal whitespace
-  const topic = raw.trim().replace(/\s+/g, ' ');
+  // Collapse internal whitespace and trim ends.
+  const text = raw.replace(/\s+/g, ' ').trim();
 
-  if (topic.length === 0) {
-    return { ok: false, reason: 'Topic cannot be empty.' };
+  if (text.length === 0) {
+    return { ok: false, reason: 'Message cannot be empty.' };
   }
 
-  if (topic.length > MAX_TOPIC_LENGTH) {
+  if (text.length > MAX_USER_TEXT_LENGTH) {
     return {
       ok: false,
-      reason: `Topic must be ${MAX_TOPIC_LENGTH} characters or fewer.`,
+      reason: `Message must be ${MAX_USER_TEXT_LENGTH} characters or fewer.`,
     };
   }
 
-  // Allow only printable characters (no control characters)
   // eslint-disable-next-line no-control-regex
-  if (/[\x00-\x1F\x7F]/.test(topic)) {
-    return { ok: false, reason: 'Topic contains invalid characters.' };
+  if (/[\x00-\x1F\x7F]/.test(text)) {
+    return { ok: false, reason: 'Message contains invalid characters.' };
   }
 
-  for (const pattern of BLOCKED_PATTERNS) {
-    if (pattern.test(topic)) {
-      return {
-        ok: false,
-        reason: 'That topic is not allowed for this exhibit. Please choose another.',
-      };
-    }
-  }
-
-  return { ok: true, topic };
+  return { ok: true, text };
 }
 
-module.exports = { sanitizeTopic };
+module.exports = { sanitizeUserText, MAX_USER_TEXT_LENGTH };
