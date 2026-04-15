@@ -6,6 +6,7 @@ const path = require('path');
 const rateLimit = require('express-rate-limit');
 
 const conversationRouter = require('./routes/conversation');
+const realtimeRouter = require('./routes/realtime');
 
 const app = express();
 const PORT = parseInt(process.env.PORT, 10) || 3001;
@@ -49,6 +50,9 @@ app.use(express.json({ limit: '10kb' }));
 
 app.use('/api/conversation/start', startLimiter);
 app.use('/api/conversation', conversationRouter);
+
+app.use('/api/realtime/session', startLimiter);
+app.use('/api/realtime', realtimeRouter);
 
 // Health check
 app.get('/api/health', (_req, res) =>

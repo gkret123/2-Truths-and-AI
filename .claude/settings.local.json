@@ -3,7 +3,10 @@
     "allow": [
       "Bash(ls c:/dev/2-Truths-and-AI/backend/.env* c:/dev/2-Truths-and-AI/frontend/.env*)",
       "Bash(ls c:/dev/2-Truths-and-AI/frontend/.env*)",
-      "Bash(node -e ':*)"
+      "Bash(node -e ':*)",
+      "Bash(node -e \"require\\('./src/routes/realtime'\\)\")",
+      "Bash(node -e \"require\\('./src/index'\\)\")",
+      "Bash(npx vite:*)"
     ]
   }
 }
