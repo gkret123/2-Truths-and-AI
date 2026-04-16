@@ -182,7 +182,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 3rem 2rem;
+  padding: 3rem 2rem 6rem;
   position: relative;
   overflow: hidden;
 }
@@ -206,6 +206,59 @@ body {
 .live-caption--active {
   color: var(--text-primary);
   text-shadow: 0 0 40px rgba(236, 236, 241, 0.08);
+}
+
+/* ── Statement boxes ──────────────────────────────────────────────────────── */
+.live-statements {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  width: 100%;
+  max-width: min(960px, 92%);
+  margin-top: 2.5rem;
+  animation: bubbleIn 0.4s ease;
+}
+
+.live-statement {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem;
+  min-height: 88px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+
+.live-statement--filled {
+  border-color: var(--border-strong);
+  background: var(--surface-alt);
+}
+
+.live-statement-number {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.live-statement--filled .live-statement-number {
+  color: var(--text-secondary);
+}
+
+.live-statement-text {
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--text-primary);
+  word-wrap: break-word;
+  animation: bubbleIn 0.35s ease;
+}
+
+@keyframes bubbleIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Indicator bar ────────────────────────────────────────────────────────── */
@@ -385,10 +438,19 @@ body {
     max-width: 95%;
   }
   .live-stage {
-    padding: 2rem 1rem;
+    padding: 2rem 1rem 5rem;
   }
   .live-indicator-bar {
     bottom: 1.5rem;
+  }
+  .live-statements {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+    margin-top: 1.5rem;
+  }
+  .live-statement {
+    min-height: 60px;
+    padding: 0.75rem 1rem;
   }
 }
 

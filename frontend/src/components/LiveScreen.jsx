@@ -11,6 +11,7 @@ export default function LiveScreen({ onReset }) {
   const [aiTranscript, setAiTranscript] = useState('');
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
+  const [statements, setStatements] = useState([null, null, null]);
   const [error, setError] = useState(null);
   const [connectAttempt, setConnectAttempt] = useState(0);
 
@@ -47,6 +48,7 @@ export default function LiveScreen({ onReset }) {
       setAiTranscript('');
       setIsAiSpeaking(false);
       setIsUserSpeaking(false);
+      setStatements([null, null, null]);
 
       try {
         // 1. Obtain ephemeral client secret from our backend
@@ -119,6 +121,43 @@ export default function LiveScreen({ onReset }) {
               case 'input_audio_buffer.speech_stopped':
                 setIsUserSpeaking(false);
                 break;
+
+              case 'response.function_call_arguments.done': {
+                try {
+                  const args = JSON.parse(event.arguments);
+                  if (
+                    typeof args.index === 'number' &&
+                    typeof args.text === 'string' &&
+                    args.index >= 0 &&
+                    args.index < 3
+                  ) {
+                    setStatements((prev) => {
+                      const next = [...prev];
+                      next[args.index] = args.text;
+                      return next;
+                    });
+                  }
+                } catch {
+                  // ignore malformed arguments
+                }
+                // Acknowledge the tool call so the model's history stays consistent
+                if (event.call_id && dc.readyState === 'open') {
+                  dc.send(
+                    JSON.stringify({
+                      type: 'conversation.item.create',
+                      item: {
+                        type: 'function_call_output',
+                        call_id: event.call_id,
+                        output: JSON.stringify({ ok: true }),
+                      },
+                    })
+                  );
+                  // Tool-call responses are often silent; explicitly ask the
+                  // model to continue with its spoken follow-up prompt.
+                  dc.send(JSON.stringify({ type: 'response.create' }));
+                }
+                break;
+              }
 
               case 'error':
                 console.error('Realtime API error:', event.error);
@@ -259,6 +298,27 @@ export default function LiveScreen({ onReset }) {
             >
               {aiTranscript}
             </div>
+
+            {statements.some((s) => s) && (
+              <div className="live-statements">
+                {[0, 1, 2].map((i) => {
+                  const filled = !!statements[i];
+                  return (
+                    <div
+                      key={i}
+                      className={`live-statement${filled ? ' live-statement--filled' : ''}`}
+                    >
+                      <div className="live-statement-number">{i + 1}</div>
+                      {filled && (
+                        <div className="live-statement-text">
+                          {statements[i]}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="live-indicator-bar">
               {isUserSpeaking && (
