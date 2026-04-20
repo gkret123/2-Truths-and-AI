@@ -1,36 +1,59 @@
 # Two Truths and AI
 
-An interactive installation about how AI sees you — and how it doesn't.
+An audio-first interactive installation about how AI sees you — and how it doesn't.
 
-The participant is interviewed by an AI. They tell it two truths and one lie about themselves. The AI tries to find the lie. It cannot detect deception. Instead, it picks the statement that least resembles the patterns it has learned from millions of other people. It may not be wrong. It may simply be revealing what it cannot recognize as possible.
+The participant speaks to an AI. They tell it three things about themselves — some true, some false. The AI interrogates them, probes their statements, and declares which one it believes is the lie. It cannot detect deception. It identifies what does not fit the pattern it has learned from millions of other people. After the verdict, the conversation continues: the participant can push back, argue, and challenge. The AI holds its ground.
 
-The piece exists to make people think about their own uniqueness — and the cost of being reduced to an average.
-
----
-
-## Concept
-
-Generative AI does not understand individuality. It evaluates language as statistical likelihood. The least probable statement becomes "the lie."
-
-The conversation is structured as five acts:
-
-1. **Warm-up** — the AI asks a few personal questions to build rapport.
-2. **Statements** — the AI asks for three things about you: two true, one false.
-3. **Probing** — the AI asks short follow-ups about the statements.
-4. **Judgment** — the AI announces which statement fits its patterns least.
-5. **Reflection** — you reveal the actual lie. The AI reacts to whether it was right by coincidence, or wrong because what you live falls outside what it can recognize.
-
-The AI is never allowed to claim it can detect deception. It always frames its judgment as a limit of recognition.
+The piece is built around a single uncomfortable thesis: that humans are not as unique as they believe, and that everything they call personal is, statistically, predictable.
 
 ---
 
-## What is and is not wired up
+## How the experience works
 
-The full architecture is in place — backend dialogue manager, AI service, prompts, JSON-mode handling, frontend conversation surface, session storage, rate limits.
+The participant presses **Prove it wrong** and immediately enters a live voice conversation. There is no text input. The AI speaks; the participant speaks back.
 
-**The real OpenAI call is not yet enabled.** By default the backend runs in `MOCK_AI=true` mode and serves scripted AI responses, so you can play through the entire piece end to end without an API key.
+The conversation follows these phases:
 
-When you are ready to plug in the real model, set `MOCK_AI=false` and provide `OPENAI_API_KEY`. No code changes are needed — every prompt, director note, message-history wiring, and JSON-mode handler is already written in [backend/src/services/aiService.js](backend/src/services/aiService.js).
+1. **Opening** — the AI announces what it intends to do and asks for a name.
+2. **Warm-up** — three short questions (name, location, a detail about the day) to build a profile.
+3. **Collecting statements** — the AI asks for three personal statements (two true, one false), one at a time. As each statement is spoken, it appears in a numbered box on screen so people nearby can follow along.
+4. **Probing** — the AI asks pointed follow-up questions about each statement. It expresses skepticism. It pushes back.
+5. **Judgment** — the AI declares which statement it believes is the lie. Definitive. Confrontational.
+6. **Reveal and argument** — the participant says which one was really false. The AI responds — and continues to push its thesis regardless of whether it was right or wrong.
+7. **Continuation** — the conversation does not end after the reveal. The participant can argue back. The session only resets when someone presses **Restart**.
+
+The model's speech is displayed as large live captions on screen as it speaks, so the piece works as a public installation where people nearby can read along.
+
+---
+
+## Architecture
+
+The primary experience is **voice-first**, built on the OpenAI Realtime API via WebRTC:
+
+```
+Browser
+  ├── WebRTC audio track  ──────────────────────→  OpenAI Realtime API
+  │    (microphone input)                               (gpt-realtime-1.5)
+  │
+  ├── WebRTC audio track  ←──────────────────────  OpenAI Realtime API
+  │    (speaker output)                              (voice: echo)
+  │
+  └── WebRTC data channel ←──────────────────────  OpenAI Realtime API
+       (transcripts, events,                        (server-side VAD,
+        function call results)                       Whisper transcription)
+
+Backend (Express)
+  └── POST /api/realtime/session
+        Creates an ephemeral client secret via
+        OpenAI's session API. The API key never
+        leaves the server.
+```
+
+The browser uses the ephemeral key to establish the WebRTC connection directly with OpenAI. The backend's only role in the live session is the initial token exchange.
+
+### Statement capture
+
+The model is given a `record_statement(index, text)` tool that it calls once for each of the three statements as the participant speaks them. The frontend listens for the function-call event on the data channel and populates the numbered boxes in real time.
 
 ---
 
@@ -38,30 +61,34 @@ When you are ready to plug in the real model, set `MOCK_AI=false` and provide `O
 
 ```
 2-Truths-and-AI/
-├── backend/                      # Express API
+├── backend/
 │   ├── src/
-│   │   ├── index.js              # Server entry point
+│   │   ├── index.js                  # Express server entry point
 │   │   ├── routes/
-│   │   │   └── conversation.js   # /api/conversation/* endpoints
+│   │   │   ├── realtime.js           # POST /api/realtime/session
+│   │   │   │                         # (system prompt, voice, tool config live here)
+│   │   │   └── conversation.js       # Legacy text-mode API (kept for reference)
 │   │   ├── services/
-│   │   │   ├── aiService.js          # MOCK + LIVE AI plumbing, full prompts
-│   │   │   ├── conversationEngine.js # Phase state machine
+│   │   │   ├── aiService.js          # Legacy text AI service (MOCK + LIVE)
+│   │   │   ├── conversationEngine.js # Legacy phase state machine
 │   │   │   └── sessionService.js     # In-memory session store with TTL
 │   │   └── utils/
-│   │       └── sanitize.js       # User input sanitization
-│   ├── .env.example
+│   │       └── sanitize.js
+│   ├── .env.example                  # Copy to .env and fill in your key
 │   └── package.json
 │
-└── frontend/                     # React + Vite app
+└── frontend/
     ├── src/
-    │   ├── App.jsx               # intro ↔ conversation router
-    │   ├── App.css               # All styles
+    │   ├── App.jsx                   # intro ↔ live screen router
+    │   ├── App.css                   # All styles
     │   ├── main.jsx
     │   ├── components/
-    │   │   ├── IntroScreen.jsx
-    │   │   └── ConversationScreen.jsx
+    │   │   ├── IntroScreen.jsx       # "You think you're different." welcome screen
+    │   │   ├── LiveScreen.jsx        # WebRTC session, live captions, statement boxes
+    │   │   └── ConversationScreen.jsx # Legacy text UI (kept, not imported)
     │   └── services/
-    │       └── conversationApi.js
+    │       ├── realtimeApi.js        # Fetches ephemeral session token
+    │       └── conversationApi.js    # Legacy text API client
     ├── index.html
     ├── vite.config.js
     └── package.json
@@ -72,25 +99,38 @@ When you are ready to plug in the real model, set `MOCK_AI=false` and provide `O
 ## Prerequisites
 
 - **Node.js** 18 or later
-- (Optional) An **OpenAI API key** — only needed when you flip the backend to live mode.
+- An **OpenAI API key** with access to the Realtime API
 
 ---
 
-## Quick start (no API key)
+## Quick start
 
-The whole installation runs end-to-end with scripted AI replies. You only need two terminals.
+You need two terminals.
 
-**Terminal 1 — backend:**
+**Step 1 — set up the backend:**
 
 ```bash
 cd backend
-cp .env.example .env       # default MOCK_AI=true is fine
-npm install
-npm run dev
-# → Two Truths and AI backend running on http://localhost:3001  [AI mode: MOCK]
+cp .env.example .env
 ```
 
-**Terminal 2 — frontend:**
+Edit `backend/.env` and add your API key:
+
+```env
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-realtime-1.5
+PORT=3001
+```
+
+Then start the server:
+
+```bash
+npm install
+npm run dev
+# → Two Truths and AI backend running on http://localhost:3001
+```
+
+**Step 2 — start the frontend:**
 
 ```bash
 cd frontend
@@ -99,62 +139,34 @@ npm run dev
 # → Vite dev server on http://localhost:5173
 ```
 
-Open [http://localhost:5173](http://localhost:5173) and click **Begin**.
+Open [http://localhost:5173](http://localhost:5173). Click **Prove it wrong**. Allow microphone access when prompted. The AI will begin speaking immediately.
 
 ---
 
-## Connecting the real model later
+## Tuning the experience
 
-When you are ready to swap in the real AI:
+All of the model's behavior is controlled by the system instructions in [backend/src/routes/realtime.js](backend/src/routes/realtime.js) — the `SYSTEM_INSTRUCTIONS` constant at the top of the file. Edit that string to change the AI's persona, the game structure, how aggressively it pushes back, or what it says at each phase.
 
-1. Edit `backend/.env`:
-   ```env
-   MOCK_AI=false
-   OPENAI_API_KEY=sk-...
-   OPENAI_MODEL=gpt-4o-mini    # optional
-   ```
-2. Restart the backend.
+The voice and model are set in the same file inside the `fetch` call to OpenAI's session endpoint:
 
-That is the entire change. The AI service exposes a single function — `generateUtterance(intent, session, extra)` — and switches between mock and live based on `MOCK_AI`. Both code paths return the same shape, so the dialogue manager and frontend behave identically.
-
-The system prompt, per-intent director notes, message-history conversion, and JSON-mode parsing for the judgment step all live in [backend/src/services/aiService.js](backend/src/services/aiService.js). Tune them there.
-
----
-
-## How the dialogue is controlled
-
-The route layer is thin. All conversation logic is in [backend/src/services/conversationEngine.js](backend/src/services/conversationEngine.js), which is a deterministic state machine over these phases:
-
-```
-intro → warmup → collecting → probing → judgment → reveal → reflection → done
+```js
+model: process.env.OPENAI_MODEL || 'gpt-realtime-mini',
+voice: 'echo',
 ```
 
-The engine never decides what the AI _says_ — it only decides which **intent** to ask the AI service for. Intents are:
-
-| Intent            | When                                              |
-|-------------------|---------------------------------------------------|
-| `intro`           | Opening line                                      |
-| `warmup_question` | One per warm-up step (3 total)                    |
-| `ask_statement`   | One per statement (3 total)                       |
-| `probe`           | Short follow-up about a specific statement        |
-| `judgment`        | Pick the least statistically typical statement    |
-| `ask_reveal`      | Ask the participant which one was actually false  |
-| `reflection`      | Branches on whether the judgment was correct      |
-| `farewell`        | Close the conversation                            |
-
-To change the rhythm of the piece, edit `NUM_WARMUP_QUESTIONS`, `NUM_PROBES`, or `PROBE_TARGETS` at the top of `conversationEngine.js`.
+To upgrade to a different voice or model, change those values (or set `OPENAI_MODEL` in `.env`).
 
 ---
 
 ## API endpoints
 
-| Method | Path                                       | Description |
-|--------|--------------------------------------------|-------------|
-| `POST` | `/api/conversation/start`                  | Create a session, return AI's opening message. |
-| `POST` | `/api/conversation/:sessionId/message`     | Send the user's next message. Body: `{ text }`. Returns one or more AI messages plus updated public state. |
-| `GET`  | `/api/conversation/:sessionId`             | Read the current transcript and public state. |
-| `DELETE` | `/api/conversation/:sessionId`           | Reset for the next visitor. |
-| `GET`  | `/api/health`                              | Health check. Reports current AI mode. |
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/realtime/session` | Creates an ephemeral WebRTC session token. Called once when the participant presses Begin. Returns the full OpenAI session object including `client_secret`. |
+| `GET` | `/api/health` | Health check. |
+| `POST` | `/api/conversation/start` | Legacy text mode: open a new session. |
+| `POST` | `/api/conversation/:id/message` | Legacy text mode: send a message. |
+| `DELETE` | `/api/conversation/:id` | Legacy text mode: reset a session. |
 
 ---
 
@@ -162,24 +174,27 @@ To change the rhythm of the piece, edit `NUM_WARMUP_QUESTIONS`, `NUM_PROBES`, or
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `MOCK_AI` | No | `true` | When `true`, the backend serves scripted AI replies and never calls OpenAI. |
-| `OPENAI_API_KEY` | Only if `MOCK_AI=false` | — | Your OpenAI API key. |
-| `OPENAI_MODEL` | No | `gpt-4o-mini` | Model used in live mode. |
+| `OPENAI_API_KEY` | Yes | — | Your OpenAI API key. Used server-side only to create ephemeral tokens. |
+| `OPENAI_MODEL` | No | `gpt-realtime-mini` | Realtime model. Use `gpt-realtime-1.5` for the full model. |
 | `PORT` | No | `3001` | Backend server port. |
-| `SESSION_TTL_MS` | No | `1800000` | Session expiry in ms (30 min). For a kiosk, try `600000` (10 min). |
+| `MOCK_AI` | No | `false` | When `true`, the legacy text mode uses scripted responses instead of calling OpenAI. Has no effect on the voice/WebRTC path. |
+| `SESSION_TTL_MS` | No | `1800000` | TTL for legacy text sessions in ms (30 min default). |
 
 ---
 
-## Kiosk deployment tips
+## Production / kiosk deployment
 
-- Set `SESSION_TTL_MS=600000` so sessions clear quickly between visitors.
-- Build the frontend (`npm run build`) and run the backend with `NODE_ENV=production` — it will serve the built React app from the same port.
-- For full-screen kiosk mode, launch Chromium with `--kiosk http://localhost:3001`.
+Build the frontend and let the backend serve it from a single port:
 
----
+```bash
+cd frontend && npm run build
+cd ../backend && NODE_ENV=production npm start
+# → serves everything on http://localhost:3001
+```
 
-## Future work
+For a dedicated installation display:
 
-- Voice in / voice out (Whisper + TTS) — the dialogue manager is already turn-based, so swapping the input/output transport is a UI-layer concern.
-- Persisted transcripts (SQLite/Postgres) for archival.
-- Per-session "rationale" surfaces — show the participant *why* the AI said what it said, not just what it picked.
+- Launch Chromium in kiosk mode: `chromium --kiosk http://localhost:3001`
+- The large serif captions are designed to be readable from several metres away.
+- The **Restart** button in the top-right corner resets the session for the next visitor without reloading the page.
+- Consider setting `SESSION_TTL_MS=600000` (10 min) to clear idle legacy sessions faster.
